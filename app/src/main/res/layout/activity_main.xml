@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/main_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".MainActivity">
+
+    <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="150dp"
+            android:layout_height="200dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="32dp"
+            app:layout_constraintBottom_toTopOf="@+id/take_photo"
+            app:layout_constraintEnd_toStartOf="@+id/videoView"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@mipmap/ic_launcher"
+            tools:srcCompat="@tools:sample/avatars" />
+
+    <VideoView
+            android:id="@+id/videoView"
+            android:layout_width="150dp"
+            android:layout_height="200dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:layout_marginBottom="40dp"
+            app:layout_constraintBottom_toTopOf="@+id/take_photo"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toEndOf="@+id/imageView"
+            app:layout_constraintTop_toTopOf="@+id/imageView" />
+
+    <TextView
+            android:id="@+id/result_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/custom_text_border"
+            android:padding="16dp"
+            android:text="JSON Result will show here"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.497"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/submit"
+            app:layout_constraintVertical_bias="0.372" />
+
+    <Button
+            android:id="@+id/take_video"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="12dp"
+            android:text="Take Video"
+            app:layout_constraintBottom_toTopOf="@+id/submit"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.518"
+            app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+            android:id="@+id/submit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="212dp"
+            android:text="Submit"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.517"
+            app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+            android:id="@+id/take_photo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            android:text="Take Photo"
+            app:layout_constraintBottom_toTopOf="@+id/take_video"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.519"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.978" />
+
+    <include
+            android:id="@+id/layout_progress"
+            android:visibility="gone"
+            layout="@layout/layout_progress_bar"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
