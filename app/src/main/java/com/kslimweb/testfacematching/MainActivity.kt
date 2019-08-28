@@ -1,12 +1,10 @@
 package com.kslimweb.testfacematching
 
 import android.Manifest
-import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.provider.MediaStore
@@ -16,6 +14,8 @@ import android.widget.MediaController
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.afollestad.materialdialogs.MaterialDialog
+import com.appyvet.materialrangebar.RangeBar
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import kotlinx.android.synthetic.main.activity_main.*
@@ -30,11 +30,12 @@ import java.io.File
 class MainActivity : AppCompatActivity() {
 
     private val TAG = MainActivity::class.java.simpleName
-    private var imageFile : File? = null
-    private var videoFile : File? = null
+    private var imageFile: File? = null
+    private var videoFile: File? = null
+    private var threshold: String? = null
+
     private val imageFormKey = "original"
     private val videoFormKey = "unknown"
-
     private val TAKE_PICTURE_CODE = 200
     private val TAKE_VIDEO_CODE = 202
     private val permissionCheck = PermissionCheckAndRequest(this, this)
@@ -46,7 +47,29 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        threshold_range_bar.setRangePinsByValue(0.6F, 0.6F)
+        threshold_range_bar.setOnRangeBarChangeListener(object: RangeBar.OnRangeBarChangeListener {
+            override fun onTouchEnded(rangeBar: RangeBar?) {
 
+            }
+
+            override fun onRangeChangeListener(
+                rangeBar: RangeBar?,
+                leftPinIndex: Int,
+                rightPinIndex: Int,
+                leftPinValue: String?,
+                rightPinValue: String?
+            ) {
+                Log.d(TAG, "Current Threshold Value: $rightPinValue")
+                threshold = rightPinValue
+            }
+
+            override fun onTouchStarted(rangeBar: RangeBar?) {
+
+            }
+        })
+
+        // check permission
         if (permissionCheck.checkAndRequestPermissions()) {
             // carry on the normal flow, as the case of  permissions  granted.
             Handler().postDelayed({
@@ -69,10 +92,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         submit.setOnClickListener{
-
             whenAllNotNull(imageFile, videoFile) {
                 layout_progress.visibility = View.VISIBLE
-                val retrofit = RetrofitClient.retrofitInstance?.create(ApiService::class.java)
+                val retrofit = RetrofitClientBuilder.retrofitInstance?.create(FaceMatchingService::class.java)
 
                 val imageRequest = RequestBody.create(MediaType.parse("multipart/form-data"), imageFile!!)
                 val imagePart = MultipartBody.Part.createFormData(imageFormKey, imageFile!!.name, imageRequest)
@@ -80,22 +102,36 @@ class MainActivity : AppCompatActivity() {
                 val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
                 val videoPart = MultipartBody.Part.createFormData(videoFormKey, videoFile!!.name, videoRequest)
 
-                val threshold = RequestBody.create(MediaType.parse("multipart/form-data"), "")
+                val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold!!)
 
-                retrofit?.postData(imagePart, videoPart, threshold)?.enqueue(object:
+                retrofit?.postData(imagePart, videoPart, thresholdFormData)?.enqueue(object:
                     Callback<ResponseData> {
                     override fun onFailure(call: Call<ResponseData>, t: Throwable) {
-                        Log.d(TAG, t.message)
+                        Log.d(TAG, "Failed: " + t.message)
+                        layout_progress.visibility = View.GONE
                     }
 
                     override fun onResponse(call: Call<ResponseData>, response: Response<ResponseData>) {
                         layout_progress.visibility = View.GONE
-                        val results = response.body()
-                        Log.d(TAG, "Response: " + Gson().toJson(results))
+                        val result = response.body()
+                        Log.d(TAG, "Response: " + Gson().toJson(result))
+                        result_text_view.text = GsonBuilder().setPrettyPrinting().create().toJson(result)
 
-                        result_text_view.text = GsonBuilder().setPrettyPrinting().create().toJson(results)
+                        showMaterialDialog(result!!.isMatch)
                     }
                 })!!
+            }
+        }
+    }
+
+    private fun showMaterialDialog(match: Boolean) {
+        MaterialDialog(this).show {
+            if (match) {
+                title(text = "Your face is matched")
+                icon(R.drawable.ic_check_green_24dp)
+            } else {
+                title(text = "Your face is not match")
+                icon(R.drawable.ic_cross_red_24dp)
             }
         }
     }
@@ -181,10 +217,9 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == TAKE_PICTURE_CODE && resultCode == RESULT_OK) {
             val imageBitmap = intent!!.extras!!.get("data") as Bitmap
 
-            val imageUri = getImageUri(this, imageBitmap)
-
+            val imageUri = PathUtil.getImageUri(this, imageBitmap)
             val imagePath = PathUtil.getPath(this, imageUri)
-            Log.d(TAG, "Image: " + imagePath)
+            Log.d(TAG, "Image: $imagePath")
 
             imageFile = File(imagePath)
             imageView.setImageBitmap(imageBitmap)
@@ -193,7 +228,7 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == TAKE_VIDEO_CODE && resultCode == RESULT_OK) {
             val videoUri = intent!!.data
             val videoPath = PathUtil.getPath(this, videoUri!!)
-            Log.d(TAG, "Video: " + videoPath)
+            Log.d(TAG, "Video: $videoPath")
 
             videoFile = File(videoPath)
             videoView.setVideoURI(videoUri)
@@ -203,10 +238,5 @@ class MainActivity : AppCompatActivity() {
             videoView.setMediaController(mediaController)
             videoView.start()
         }
-    }
-
-    private fun getImageUri(inContext: Context, inImage: Bitmap): Uri {
-        val path = MediaStore.Images.Media.insertImage(inContext.contentResolver, inImage, "Title", null)
-        return Uri.parse(path)
     }
 }
