@@ -4,4 +4,4 @@
 
 This app leverage the Flask API deployed on https://cardzone-face-matching.herokuapp.com with endpoint /api/upload. Used Retrofit to call it
 
-The repo for the API is in [Face-Comparison](https://github.com/kslim888/Face-Comparison)
+The repo for the API is in [Face-Comparison](https://github.com/limkhashing/Face-Comparison)
