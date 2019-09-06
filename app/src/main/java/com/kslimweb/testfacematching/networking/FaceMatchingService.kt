@@ -1,5 +1,6 @@
-package com.kslimweb.testfacematching
+package com.kslimweb.testfacematching.networking
 
+import com.kslimweb.testfacematching.models.ResponseData
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Call

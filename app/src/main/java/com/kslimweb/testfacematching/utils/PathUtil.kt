@@ -1,4 +1,4 @@
-package com.kslimweb.testfacematching
+package com.kslimweb.testfacematching.utils
 
 import android.annotation.SuppressLint
 import android.content.ContentUris
@@ -21,7 +21,7 @@ object PathUtil {
     /*
      * Gets the file path of the given Uri.
      */
-    @SuppressLint("NewApi")
+    @SuppressLint("NewApi", "ObsoleteSdkInt")
     @Throws(URISyntaxException::class)
     fun getPath(context: Context, uri: Uri): String? {
         var mediaUri = uri

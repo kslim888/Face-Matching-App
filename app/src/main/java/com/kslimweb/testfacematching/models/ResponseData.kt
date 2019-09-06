@@ -1,4 +1,4 @@
-package com.kslimweb.testfacematching
+package com.kslimweb.testfacematching.models
 
 import com.google.gson.annotations.SerializedName
 

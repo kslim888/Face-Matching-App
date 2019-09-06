@@ -1,4 +1,4 @@
-package com.kslimweb.testfacematching
+package com.kslimweb.testfacematching.networking
 
 import okhttp3.Interceptor
 import retrofit2.Retrofit
