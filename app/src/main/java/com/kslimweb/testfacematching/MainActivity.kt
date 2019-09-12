@@ -1,12 +1,9 @@
 package com.kslimweb.testfacematching
 
-import android.content.Context
 import android.content.Intent
-import android.database.Cursor
-import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.MediaController
@@ -22,12 +19,13 @@ import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceLandmark
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.kslimweb.testfacematching.camera.CameraXActivity
+import com.kslimweb.testfacematching.camera.CameraXActivity.Companion.cameraImageFile
+import com.kslimweb.testfacematching.camera.CameraXActivity.Companion.cameraVideoFile
 import com.kslimweb.testfacematching.models.ResponseData
 import com.kslimweb.testfacematching.networking.FaceMatchingService
 import com.kslimweb.testfacematching.networking.RetrofitClientBuilder
-import com.kslimweb.testfacematching.permissions.MultiplePermissionListener.Companion.settingsFlag
 import com.kslimweb.testfacematching.permissions.PermissionsUtil
-import com.kslimweb.testfacematching.utils.PathUtil
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.MediaType
 import okhttp3.MultipartBody
@@ -44,31 +42,12 @@ class MainActivity : AppCompatActivity() {
     private var imageFile: File? = null
     private var videoFile: File? = null
     private var threshold: String? = null
-    private var onResumeCalledAlready: Boolean = false
 
     companion object {
-        const val TAKE_PICTURE_CODE = 200
-        const val TAKE_VIDEO_CODE = 202
-        const val IMAGE_FORM_KEY = "original"
-        const val VIDEO_FORM_KEY = "unknown"
-        const val ON_RESUME_CALLED_PREFERENCE_KEY = "onResumeCalled"
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        // Save current onResumeCalledAlready state
-        outState.putBoolean(ON_RESUME_CALLED_PREFERENCE_KEY, onResumeCalledAlready)
-        super.onSaveInstanceState(outState)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (settingsFlag && !PermissionsUtil.areAllPermissionsGranted() && !onResumeCalledAlready) {
-            onResumeCalledAlready = true
-            MaterialDialog(this).show {
-                message(text = "Permissions are not granted. Please allow permissions in App Settings")
-                positiveButton()
-            }
-        }
+        const val TAKE_PICTURE_FLAG = 1
+        const val TAKE_VIDEO_FLAG = 2
+        private const val IMAGE_FORM_KEY = "known"
+        private const val VIDEO_FORM_KEY = "unknown"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,17 +55,27 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         PermissionsUtil.setContext(this)
-        PermissionsUtil.checkAndRequestPermissions()
 
-        onResumeCalledAlready = // Restore value of members from saved state
-            savedInstanceState?.getBoolean(ON_RESUME_CALLED_PREFERENCE_KEY) ?: false
+        if (cameraImageFile != null) {
+            val imageBitmap = BitmapFactory.decodeFile(cameraImageFile?.path)
+            imageView.setImageBitmap(imageBitmap)
+
+            imageFile = cameraImageFile
+        }
+
+        if (cameraVideoFile != null) {
+            // start video media
+            val mediaController = MediaController(this)
+            videoView.setVideoURI(Uri.fromFile(cameraVideoFile))
+            videoView.setMediaController(mediaController)
+            videoView.start()
+
+            videoFile = cameraVideoFile
+        }
 
         threshold_range_bar.setRangePinsByValue(0.6F, 0.6F)
         threshold_range_bar.setOnRangeBarChangeListener(object: RangeBar.OnRangeBarChangeListener {
-            override fun onTouchEnded(rangeBar: RangeBar?) {
-
-            }
-
+            override fun onTouchEnded(rangeBar: RangeBar?) { }
             override fun onRangeChangeListener(
                 rangeBar: RangeBar?,
                 leftPinIndex: Int,
@@ -97,60 +86,53 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "Current Threshold Value: $rightPinValue")
                 threshold = rightPinValue
             }
-
-            override fun onTouchStarted(rangeBar: RangeBar?) {
-
-            }
+            override fun onTouchStarted(rangeBar: RangeBar?) { }
         })
 
         take_photo.setOnClickListener{
-            if(PermissionsUtil.areAllPermissionsGranted()) {
-                val takePicture = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                startActivityForResult(takePicture, TAKE_PICTURE_CODE)
-            }
+            val takePicture = Intent(this, CameraXActivity::class.java)
+            PermissionsUtil.checkAndRequestPermissions(takePicture, TAKE_PICTURE_FLAG)
         }
 
         take_video.setOnClickListener{
-            if(PermissionsUtil.areAllPermissionsGranted()) {
-                Intent(MediaStore.ACTION_VIDEO_CAPTURE).also { takeVideoIntent ->
-                    takeVideoIntent.resolveActivity(packageManager)?.also {
-                        startActivityForResult(takeVideoIntent, TAKE_VIDEO_CODE)
-                    }
-                }
-            }
+            val takeVideo = Intent(this, CameraXActivity::class.java)
+            PermissionsUtil.checkAndRequestPermissions(takeVideo, TAKE_VIDEO_FLAG)
         }
 
         submit.setOnClickListener{
+            performFaceMatchingRequest()
+        }
+    }
 
-            whenAllNotNull(imageFile, videoFile) {
-                layout_progress.visibility = View.VISIBLE
-                val retrofit = RetrofitClientBuilder.retrofitInstance?.create(FaceMatchingService::class.java)
+    private fun performFaceMatchingRequest() {
+        whenAllNotNull(imageFile, videoFile) {
+            layout_progress.visibility = View.VISIBLE
 
-                val imageRequest = RequestBody.create(MediaType.parse("multipart/form-data"), imageFile!!)
-                val imagePart = MultipartBody.Part.createFormData(IMAGE_FORM_KEY, imageFile!!.name, imageRequest)
+            // setting up forms data
+            val imageRequest = RequestBody.create(MediaType.parse("multipart/form-data"), imageFile!!)
+            val imagePart = MultipartBody.Part.createFormData(IMAGE_FORM_KEY, imageFile!!.name, imageRequest)
+            val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
+            val videoPart = MultipartBody.Part.createFormData(VIDEO_FORM_KEY, videoFile!!.name, videoRequest)
+            val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold!!)
 
-                val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
-                val videoPart = MultipartBody.Part.createFormData(VIDEO_FORM_KEY, videoFile!!.name, videoRequest)
+            // perform http request
+            val retrofit = RetrofitClientBuilder.retrofitInstance?.create(FaceMatchingService::class.java)
+            retrofit?.postData(imagePart, videoPart, thresholdFormData)?.enqueue(object:
+                Callback<ResponseData> {
+                override fun onFailure(call: Call<ResponseData>, t: Throwable) {
+                    Log.d(TAG, "Failed: " + t.message)
+                    layout_progress.visibility = View.GONE
+                }
 
-                val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold!!)
+                override fun onResponse(call: Call<ResponseData>, response: Response<ResponseData>) {
+                    layout_progress.visibility = View.GONE
+                    val result = response.body()
+                    Log.d(TAG, "Response: " + Gson().toJson(result))
+                    result_text_view.text = GsonBuilder().setPrettyPrinting().create().toJson(result)
 
-                retrofit?.postData(imagePart, videoPart, thresholdFormData)?.enqueue(object:
-                    Callback<ResponseData> {
-                    override fun onFailure(call: Call<ResponseData>, t: Throwable) {
-                        Log.d(TAG, "Failed: " + t.message)
-                        layout_progress.visibility = View.GONE
-                    }
-
-                    override fun onResponse(call: Call<ResponseData>, response: Response<ResponseData>) {
-                        layout_progress.visibility = View.GONE
-                        val result = response.body()
-                        Log.d(TAG, "Response: " + Gson().toJson(result))
-                        result_text_view.text = GsonBuilder().setPrettyPrinting().create().toJson(result)
-
-                        showResultDialog(result!!.isMatch)
-                    }
-                })!!
-            }
+                    showResultDialog(result!!.isMatch)
+                }
+            })!!
         }
     }
 
@@ -166,47 +148,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getRealPathFromURI(context: Context, contentUri: Uri): String {
-        var cursor: Cursor? = null
-        return try {
-            val proj = arrayOf(MediaStore.Images.Media.DATA)
-            cursor = context.contentResolver.query(contentUri, proj, null, null, null)
-            val columnIndex = cursor!!.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
-            cursor.moveToFirst()
-            cursor.getString(columnIndex)
-        } catch (e: Exception) {
-            Log.e(TAG, "getRealPathFromURI Exception : $e")
-            ""
-        } finally {
-            cursor?.close()
-        }
-    }
-
     // https://stackoverflow.com/questions/35513636/multiple-variable-let-in-kotlin
     private fun <T: Any, R: Any> whenAllNotNull(vararg options: T?, block: (List<T>)->R) {
         if (options.all { it != null }) {
             block(options.filterNotNull()) // or do unsafe cast to non null collection
         } else {
-            Toast.makeText(this,"Take photo and a short ( < 5 seconds) video first", Toast.LENGTH_LONG).show()
+            Toast.makeText(this,"Please take photo and a short ( < 5 seconds) video first", Toast.LENGTH_LONG).show()
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
-        super.onActivityResult(requestCode, resultCode, intent)
-
-        if (requestCode == TAKE_PICTURE_CODE && resultCode == RESULT_OK) {
-            val imageBitmap = intent!!.extras!!.get("data") as Bitmap
-
-            val imageUri = PathUtil.getImageUri(this, imageBitmap)
-            val imagePath = getRealPathFromURI(this, imageUri)
-            Log.d(TAG, "Image path: $imagePath")
-
-            imageFile = File(imagePath)
-            imageView.setImageBitmap(imageBitmap)
-
-            // [START compressor]
-            // Image file can be compress if is too big
-            // Put Gradle implementation 'id.zelory:compressor:2.1.0'
+    private fun compressFile() {
+        // [START compressor]
+        // Image file can be compress if is too big
+        // Put Gradle implementation 'id.zelory:compressor:2.1.0'
 //            val actualImage = FileUtil.from(this, imageUri)
 //            Log.d(TAG, String.format("Size : %s", actualImage!!.length()))
 //
@@ -218,82 +172,6 @@ class MainActivity : AppCompatActivity() {
 //                .setCompressFormat(Bitmap.CompressFormat.WEBP)
 //                .compressToFile(actualImage)
 //            Log.d(TAG, String.format("Size : %s", compressedImageFile!!.length()))
-        }
 
-        if (requestCode == TAKE_VIDEO_CODE && resultCode == RESULT_OK) {
-            val videoUri = intent!!.data
-            Log.d(TAG, "videoUri: $videoUri")
-
-            if (videoUri != null) {
-                val videoPath = getRealPathFromURI(this, videoUri)
-                videoFile = File(videoPath)
-                Log.d(TAG, "Video path: $videoPath")
-
-                // start video media
-                val mediaController = MediaController(this)
-                videoView.setVideoURI(videoUri)
-                videoView.setMediaController(mediaController)
-                videoView.start()
-            }
-        }
-    }
-
-    private fun faceDetection(imageUri: Uri) {
-        // options
-        val realTimeOpts = FirebaseVisionFaceDetectorOptions.Builder()
-            .setContourMode(FirebaseVisionFaceDetectorOptions.ALL_CONTOURS)
-            .build()
-
-        val options = FirebaseVisionFaceDetectorOptions.Builder()
-            .setClassificationMode(FirebaseVisionFaceDetectorOptions.ACCURATE)
-            .setLandmarkMode(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
-            .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
-            .setMinFaceSize(0.15f)
-            .enableTracking()
-            .build()
-
-        // face detection start here
-        val image = FirebaseVisionImage.fromFilePath(this, imageUri)
-        val detector = FirebaseVision.getInstance()
-            .getVisionFaceDetector(options)
-        detector.detectInImage(image)
-            .addOnSuccessListener { faces ->
-                // Task completed successfully
-                Log.d(TAG, "face detected")
-                for (face in faces) {
-                    val bounds = face.boundingBox
-                    val rotY = face.headEulerAngleY // Head is rotated to the right rotY degrees
-                    val rotZ = face.headEulerAngleZ // Head is tilted sideways rotZ degrees
-
-                    // If landmark detection was enabled (mouth, ears, eyes, cheeks, and
-                    // nose available):
-                    val leftEar = face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EAR)
-                    leftEar?.let {
-                        val leftEarPos = leftEar.position
-                    }
-
-                    // If contour detection was enabled:
-                    val leftEyeContour = face.getContour(FirebaseVisionFaceContour.LEFT_EYE).points
-                    val upperLipBottomContour = face.getContour(FirebaseVisionFaceContour.UPPER_LIP_BOTTOM).points
-
-                    // If classification was enabled:
-                    if (face.smilingProbability != FirebaseVisionFace.UNCOMPUTED_PROBABILITY) {
-                        val smileProb = face.smilingProbability
-                    }
-                    if (face.rightEyeOpenProbability != FirebaseVisionFace.UNCOMPUTED_PROBABILITY) {
-                        val rightEyeOpenProb = face.rightEyeOpenProbability
-                    }
-
-                    // If face tracking was enabled:
-                    if (face.trackingId != FirebaseVisionFace.INVALID_ID) {
-                        val id = face.trackingId
-                    }
-                }
-            }
-            .addOnFailureListener {
-                // Task failed with an exception
-                // ...
-                Log.d(TAG, it.message)
-            }
     }
 }

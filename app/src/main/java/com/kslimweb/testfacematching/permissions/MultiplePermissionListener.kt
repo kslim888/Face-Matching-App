@@ -1,6 +1,6 @@
 package com.kslimweb.testfacematching.permissions
 
-import android.content.Context
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -10,34 +10,38 @@ import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
+import com.kslimweb.testfacematching.MainActivity
+import com.kslimweb.testfacematching.camera.CameraXActivity
 
-class MultiplePermissionListener(private val context: Context) : MultiplePermissionsListener {
+class MultiplePermissionListener(
+    private val activity: Activity,
+    private val intent: Intent,
+    private val flag: Int
+) : MultiplePermissionsListener {
 
     private val TAG = MultiplePermissionListener::class.java.simpleName
-    companion object {
-        var areAllPermissionsGranted = false
-        var settingsFlag = false
-    }
 
     override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
 
         if (report != null) {
             if (report.areAllPermissionsGranted()) {
-                areAllPermissionsGranted = true
+
+                intent.putExtra("FLAG", flag)
+                activity.startActivity(intent)
+//                activity.startActivityForResult(intent, code)
                 return
             }
 
             // check for permanent denial of any permission
-            if (report.isAnyPermissionPermanentlyDenied && !settingsFlag) {
+            if (report.isAnyPermissionPermanentlyDenied) {
 
-                // permission is denied permenantly, navigate user to app settings
-                MaterialDialog(context).show {
+                // permission is denied permanently, navigate user to app settings
+                MaterialDialog(activity).show {
                     Log.d(TAG, "isAnyPermissionPermanentlyDenied")
-                    message(text = "Permissions are required in order to work properly")
+                    message(text = "Please allow all permissions in App settings")
                     negativeButton()
                     positiveButton(text = "Open Settings") {
                         Log.d(TAG, "Continue to Settings")
-                        settingsFlag = true
                         context.startActivity(
                             Intent(
                                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -55,17 +59,6 @@ class MultiplePermissionListener(private val context: Context) : MultiplePermiss
         permissions: MutableList<PermissionRequest>?,
         token: PermissionToken?
     ) {
-        if (token != null) {
-            MaterialDialog(context).show {
-                message(text = "Permissions are required in order to work properly")
-                negativeButton { token.cancelPermissionRequest() }
-                positiveButton(text = "Continue Allow") {
-                    Log.d(TAG, "Continue Allow")
-                    token.continuePermissionRequest()
-//                    checkAndRequestPermissions()
-                }
-                cancelOnTouchOutside(false)
-            }
-        }
+        token?.continuePermissionRequest()
     }
 }
