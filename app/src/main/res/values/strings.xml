@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Face Matching</string>
+    <string name="timer_message">Seconds: %1$d</string>
 </resources>

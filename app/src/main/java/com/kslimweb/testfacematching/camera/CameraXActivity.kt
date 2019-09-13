@@ -14,7 +14,7 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Rational
 import android.view.MotionEvent
-import android.widget.TextView
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.lifecycle.LifecycleOwner
@@ -23,10 +23,12 @@ import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_PICTURE_FLAG
 import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_VIDEO_FLAG
 import com.kslimweb.testfacematching.R
 import com.kslimweb.testfacematching.utils.AutoFitPreviewBuilder
+import com.kslimweb.testfacematching.utils.Timer
 import kotlinx.android.synthetic.main.activity_camera_x.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+
 
 class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
@@ -93,34 +95,49 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
     private fun startCamera() {
         val preview = setupPreview()
-        var useCase: UseCase? = null
 
+        val cameraUseCase = if (flag == TAKE_PICTURE_FLAG) {
+            capture_button.setBackgroundResource(R.drawable.ic_shutter_image)
+            timer.visibility = View.GONE
+            setupImageCapture()
+        } else {
+            capture_button.setBackgroundResource( R.drawable.ic_shutter_video)
+            setupVideoCapture()
+        }
+
+        // Setup image analysis pipeline that computes average pixel luminance in real time
         val analyzerConfig = ImageAnalysisConfig.Builder().apply {
+            setLensFacing(lensFacing)
+            // Use a worker thread for image analysis to prevent preview glitches
             val analyzerThread = HandlerThread(
-                "LabelAnalysis").apply { start() }
+                "LuminosityAnalysis").apply { start() }
             setCallbackHandler(Handler(analyzerThread.looper))
-            setImageReaderMode(
-                ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
+            // In our analysis, we care more about the latest image than analyzing *every* image
+            setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
+            // Set initial target rotation, we will have to call this again if rotation changes
+            // during the lifecycle of this use case
+            setTargetRotation(view_finder.display.rotation)
         }.build()
 
         val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
+            analyzer = FaceDetection()
         }
 
-        if (flag == TAKE_PICTURE_FLAG) {
-            capture_button.setBackgroundResource(R.drawable.ic_shutter_image)
-            useCase = setupImageCapture()
-
-        } else if (flag == TAKE_VIDEO_FLAG) {
-            capture_button.setBackgroundResource( R.drawable.ic_shutter_video)
-            useCase = setupVideoCapture()
-        }
-
+/*        val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
+            analyzer = LuminosityAnalyzer { luma ->
+                // Values returned from our analyzer are passed to the attached listener
+                // We log image analysis results here -- you should do something useful instead!
+                val fps = (analyzer as LuminosityAnalyzer).framesPerSecond
+                Log.d(TAG, "Average luminosity: $luma. " +
+                        "Frames per second: ${"%.01f".format(fps)}")
+            }
+        }*/
 
         // Bind use cases to lifecycle
         // If Android Studio complains about "this" being not a LifecycleOwner
         // try rebuilding the project or updating the appcompat dependency to
         // version 1.1.0 or higher.
-        CameraX.bindToLifecycle(this, preview, useCase, analyzerUseCase)
+        CameraX.bindToLifecycle(this, preview, cameraUseCase, analyzerUseCase)
     }
 
     private fun setupPreview(): Preview {
@@ -130,12 +147,15 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
         // Create configuration object for the viewfinder use case
         val previewConfig = PreviewConfig.Builder().apply {
-            setTargetRotation(view_finder.display.rotation)
             setLensFacing(lensFacing)
+            // We request aspect ratio but no resolution to let CameraX optimize our use cases
             setTargetAspectRatio(screenAspectRatio)
+            // Set initial target rotation, we will have to call this again if rotation changes
+            // during the lifecycle of this use case
             setTargetRotation(view_finder.display.rotation)
         }.build()
 
+        // Use the auto-fit preview builder to automatically handle size and orientation changes
         val preview = AutoFitPreviewBuilder.build(previewConfig, view_finder)
 
         return preview
@@ -152,24 +172,18 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
         val videoCapture = VideoCapture(videoCaptureConfig)
 
-//        capture_button.setOnClickListener {
-//            mSound.play(MediaActionSound.START_VIDEO_RECORDING)
-//            val videoFile = setupFile(flag!!)
-//            startTimer(videoCapture)
-//            videoCapture.startRecording(videoFile, videoSavedListener)
-//        }
         capture_button.setOnTouchListener { _, event ->
 
             if (event.action == MotionEvent.ACTION_DOWN) {
                 mSound.play(MediaActionSound.START_VIDEO_RECORDING)
                 val videoFile = setupFile(flag!!)
 
-                // delay 2 second and start record
+                // delay 1 second and start record
                 capture_button.postDelayed({
 
-                    startTimer(videoCapture)
-
                     videoCapture.startRecording(videoFile, videoSavedListener)
+                    val timer = Timer(6000, 1000, this, videoCapture)
+                    timer.start()
                 }, 500)
 
             } else if (event.action == MotionEvent.ACTION_UP) {
@@ -182,21 +196,25 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
         return videoCapture
     }
 
-    @SuppressLint("RestrictedApi")
-    private fun startTimer(videoCapture: VideoCapture) {
-        timer.start()
-        timer.setOnChronometerTickListener {
-            if(it.text.toString() == "00:05") {
-                timer.stop()
-                mSound.play(MediaActionSound.STOP_VIDEO_RECORDING)
-                videoCapture.stopRecording()
-                Log.i(TAG, "Recording stopped")
-            }
-        }
-    }
+//    private fun startTimer(videoCapture: VideoCapture) {
+//        Log.d(TAG,  "CLOCK" + SystemClock.elapsedRealtime().toString())
+//        timer.base = SystemClock.elapsedRealtime()
+//        timer.start()
+//        timer.setOnChronometerTickListener {
+//
+//            val elapsedMillis = SystemClock.elapsedRealtime() - timer.base
+//            Log.d(TAG,  "Elapsed milliseconds: " + elapsedMillis)
+//
+//            if(it.text.toString() == "00:05") {
+//                timer.stop()
+//                mSound.play(MediaActionSound.STOP_VIDEO_RECORDING)
+//                videoCapture.stopRecording()
+//                Log.i(TAG, "Recording stopped")
+//            }
+//        }
+//    }
 
     private fun setupImageCapture(): ImageCapture {
-        val rotation = view_finder.display.rotation
 
         // Create configuration object for the image capture use case
         val imageCaptureConfig = ImageCaptureConfig.Builder()
@@ -206,7 +224,9 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
                 // resolution based on aspect ration and requested mode
                 setCaptureMode(ImageCapture.CaptureMode.MAX_QUALITY)
                 setLensFacing(lensFacing)
-                setTargetRotation(rotation)
+                setTargetRotation(view_finder.display.rotation)
+                // We request aspect ratio but no resolution to let CameraX optimize our use cases
+//                setTargetAspectRatio(screenAspectRatio)
             }.build()
 
         val imageCapture = ImageCapture(imageCaptureConfig)
@@ -291,11 +311,5 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
     override fun onDestroy() {
         super.onDestroy()
         CameraX.unbind()
-    }
-
-    private class LabelAnalyzer(val textView: TextView) : ImageAnalysis.Analyzer {
-        override fun analyze(image: ImageProxy, rotationDegrees: Int) {
-
-        }
     }
 }

@@ -1,7 +1,9 @@
 package com.kslimweb.testfacematching
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -9,6 +11,7 @@ import android.view.View
 import android.widget.MediaController
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.exifinterface.media.ExifInterface
 import com.afollestad.materialdialogs.MaterialDialog
 import com.appyvet.materialrangebar.RangeBar
 import com.google.firebase.ml.vision.FirebaseVision
@@ -26,6 +29,7 @@ import com.kslimweb.testfacematching.models.ResponseData
 import com.kslimweb.testfacematching.networking.FaceMatchingService
 import com.kslimweb.testfacematching.networking.RetrofitClientBuilder
 import com.kslimweb.testfacematching.permissions.PermissionsUtil
+import com.kslimweb.testfacematching.utils.ExifUtil
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.MediaType
 import okhttp3.MultipartBody
@@ -58,8 +62,8 @@ class MainActivity : AppCompatActivity() {
 
         if (cameraImageFile != null) {
             val imageBitmap = BitmapFactory.decodeFile(cameraImageFile?.path)
-            imageView.setImageBitmap(imageBitmap)
-
+            val orientedBitmap = ExifUtil.rotateBitmap(cameraImageFile?.path, imageBitmap)
+            imageView.setImageBitmap(orientedBitmap)
             imageFile = cameraImageFile
         }
 
@@ -155,23 +159,5 @@ class MainActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this,"Please take photo and a short ( < 5 seconds) video first", Toast.LENGTH_LONG).show()
         }
-    }
-
-    private fun compressFile() {
-        // [START compressor]
-        // Image file can be compress if is too big
-        // Put Gradle implementation 'id.zelory:compressor:2.1.0'
-//            val actualImage = FileUtil.from(this, imageUri)
-//            Log.d(TAG, String.format("Size : %s", actualImage!!.length()))
-//
-//            val compressedImageFile = Compressor(this)
-//                .setQuality(50)
-//                .setDestinationDirectoryPath(Environment.getExternalStoragePublicDirectory(
-//                    Environment.DIRECTORY_PICTURES).absolutePath + "/Screenshots"
-//                )
-//                .setCompressFormat(Bitmap.CompressFormat.WEBP)
-//                .compressToFile(actualImage)
-//            Log.d(TAG, String.format("Size : %s", compressedImageFile!!.length()))
-
     }
 }

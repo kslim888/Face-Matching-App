@@ -40,8 +40,6 @@
 
         </activity>
 
-<!--        <activity android:name=".CameraActivity" />-->
-
         <meta-data
             android:name="com.google.firebase.ml.vision.DEPENDENCIES"
             android:value="face" />
