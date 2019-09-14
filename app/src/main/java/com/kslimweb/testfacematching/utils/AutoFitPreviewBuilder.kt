@@ -31,6 +31,7 @@ import androidx.camera.core.PreviewConfig
 import java.lang.IllegalArgumentException
 import java.lang.ref.WeakReference
 import java.util.Objects
+import kotlin.math.roundToInt
 
 /**
  * Builder for [Preview] that takes in a [WeakReference] of the view finder and [PreviewConfig],
@@ -92,32 +93,32 @@ class AutoFitPreviewBuilder private constructor(
 
         // Every time the view finder is updated, recompute layout
         useCase.onPreviewOutputUpdateListener = Preview.OnPreviewOutputUpdateListener {
-            val viewFinder =
+            val viewFinderTextureView =
                     viewFinderRef.get() ?: return@OnPreviewOutputUpdateListener
             Log.d(TAG, "Preview output changed. " +
                     "Size: ${it.textureSize}. Rotation: ${it.rotationDegrees}")
 
             // To update the SurfaceTexture, we have to remove it and re-add it
-            val parent = viewFinder.parent as ViewGroup
-            parent.removeView(viewFinder)
-            parent.addView(viewFinder, 0)
+            val parent = viewFinderTextureView.parent as ViewGroup
+            parent.removeView(viewFinderTextureView)
+            parent.addView(viewFinderTextureView, 0)
 
             // Update internal texture
-            viewFinder.surfaceTexture = it.surfaceTexture
+            viewFinderTextureView.surfaceTexture = it.surfaceTexture
 
             // Apply relevant transformations
             bufferRotation = it.rotationDegrees
-            val rotation = getDisplaySurfaceRotation(viewFinder.display)
-            updateTransform(viewFinder, rotation, it.textureSize, viewFinderDimens)
+            val rotation = getDisplaySurfaceRotation(viewFinderTextureView.display)
+            updateTransform(viewFinderTextureView, rotation, it.textureSize, viewFinderDimens)
         }
 
         // Every time the provided texture view changes, recompute layout
         viewFinder.addOnLayoutChangeListener { view, left, top, right, bottom, _, _, _, _ ->
-            val viewFinder = view as TextureView
+            val viewFinderTextureView = view as TextureView
             val newViewFinderDimens = Size(right - left, bottom - top)
             Log.d(TAG, "View finder layout changed. Size: $newViewFinderDimens")
-            val rotation = getDisplaySurfaceRotation(viewFinder.display)
-            updateTransform(viewFinder, rotation, bufferDimens, newViewFinderDimens)
+            val rotation = getDisplaySurfaceRotation(viewFinderTextureView.display)
+            updateTransform(viewFinderTextureView, rotation, bufferDimens, newViewFinderDimens)
         }
 
         // Every time the orientation of device changes, recompute layout
@@ -150,7 +151,8 @@ class AutoFitPreviewBuilder private constructor(
     private fun updateTransform(textureView: TextureView?, rotation: Int?, newBufferDimens: Size,
                                 newViewFinderDimens: Size) {
         // This should not happen anyway, but now the linter knows
-        val textureView = textureView ?: return
+        if (textureView == null)
+            return
 
         if (rotation == viewFinderRotation &&
                 Objects.equals(newBufferDimens, bufferDimens) &&
@@ -205,10 +207,10 @@ class AutoFitPreviewBuilder private constructor(
         // Match longest sides together -- i.e. apply center-crop transformation
         if (viewFinderDimens.width > viewFinderDimens.height) {
             scaledHeight = viewFinderDimens.width
-            scaledWidth = Math.round(viewFinderDimens.width * bufferRatio)
+            scaledWidth = (viewFinderDimens.width * bufferRatio).roundToInt()
         } else {
             scaledHeight = viewFinderDimens.height
-            scaledWidth = Math.round(viewFinderDimens.height * bufferRatio)
+            scaledWidth = (viewFinderDimens.height * bufferRatio).roundToInt()
         }
 
         // Compute the relative scale value

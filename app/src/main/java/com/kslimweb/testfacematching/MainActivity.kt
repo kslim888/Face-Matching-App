@@ -1,9 +1,6 @@
 package com.kslimweb.testfacematching
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -11,15 +8,8 @@ import android.view.View
 import android.widget.MediaController
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.exifinterface.media.ExifInterface
 import com.afollestad.materialdialogs.MaterialDialog
 import com.appyvet.materialrangebar.RangeBar
-import com.google.firebase.ml.vision.FirebaseVision
-import com.google.firebase.ml.vision.common.FirebaseVisionImage
-import com.google.firebase.ml.vision.face.FirebaseVisionFace
-import com.google.firebase.ml.vision.face.FirebaseVisionFaceContour
-import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
-import com.google.firebase.ml.vision.face.FirebaseVisionFaceLandmark
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.kslimweb.testfacematching.camera.CameraXActivity
@@ -29,7 +19,7 @@ import com.kslimweb.testfacematching.models.ResponseData
 import com.kslimweb.testfacematching.networking.FaceMatchingService
 import com.kslimweb.testfacematching.networking.RetrofitClientBuilder
 import com.kslimweb.testfacematching.permissions.PermissionsUtil
-import com.kslimweb.testfacematching.utils.ExifUtil
+import com.kslimweb.testfacematching.utils.ImageUtils
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.MediaType
 import okhttp3.MultipartBody
@@ -61,8 +51,7 @@ class MainActivity : AppCompatActivity() {
         PermissionsUtil.setContext(this)
 
         if (cameraImageFile != null) {
-            val imageBitmap = BitmapFactory.decodeFile(cameraImageFile?.path)
-            val orientedBitmap = ExifUtil.rotateBitmap(cameraImageFile?.path, imageBitmap)
+            val orientedBitmap = ImageUtils.decodeBitmap(cameraImageFile!!)
             imageView.setImageBitmap(orientedBitmap)
             imageFile = cameraImageFile
         }

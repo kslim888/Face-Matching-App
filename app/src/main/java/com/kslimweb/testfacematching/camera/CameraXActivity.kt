@@ -22,6 +22,7 @@ import com.kslimweb.testfacematching.MainActivity
 import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_PICTURE_FLAG
 import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_VIDEO_FLAG
 import com.kslimweb.testfacematching.R
+import com.kslimweb.testfacematching.camera.facedetection.FaceDetection
 import com.kslimweb.testfacematching.utils.AutoFitPreviewBuilder
 import com.kslimweb.testfacematching.utils.Timer
 import kotlinx.android.synthetic.main.activity_camera_x.*
@@ -96,21 +97,12 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
     private fun startCamera() {
         val preview = setupPreview()
 
-        val cameraUseCase = if (flag == TAKE_PICTURE_FLAG) {
-            capture_button.setBackgroundResource(R.drawable.ic_shutter_image)
-            timer.visibility = View.GONE
-            setupImageCapture()
-        } else {
-            capture_button.setBackgroundResource( R.drawable.ic_shutter_video)
-            setupVideoCapture()
-        }
-
         // Setup image analysis pipeline that computes average pixel luminance in real time
         val analyzerConfig = ImageAnalysisConfig.Builder().apply {
             setLensFacing(lensFacing)
             // Use a worker thread for image analysis to prevent preview glitches
             val analyzerThread = HandlerThread(
-                "LuminosityAnalysis").apply { start() }
+                "FaceDetection").apply { start() }
             setCallbackHandler(Handler(analyzerThread.looper))
             // In our analysis, we care more about the latest image than analyzing *every* image
             setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
@@ -120,24 +112,26 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
         }.build()
 
         val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
-            analyzer = FaceDetection()
+            analyzer = FaceDetection(this@CameraXActivity)
         }
-
-/*        val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
-            analyzer = LuminosityAnalyzer { luma ->
-                // Values returned from our analyzer are passed to the attached listener
-                // We log image analysis results here -- you should do something useful instead!
-                val fps = (analyzer as LuminosityAnalyzer).framesPerSecond
-                Log.d(TAG, "Average luminosity: $luma. " +
-                        "Frames per second: ${"%.01f".format(fps)}")
-            }
-        }*/
 
         // Bind use cases to lifecycle
         // If Android Studio complains about "this" being not a LifecycleOwner
         // try rebuilding the project or updating the appcompat dependency to
         // version 1.1.0 or higher.
-        CameraX.bindToLifecycle(this, preview, cameraUseCase, analyzerUseCase)
+        if (flag == TAKE_PICTURE_FLAG) {
+            capture_button.setBackgroundResource(R.drawable.ic_shutter_image)
+            timer.visibility = View.GONE
+            val cameraUseCase = setupImageCapture()
+            CameraX.bindToLifecycle(this, preview, cameraUseCase, analyzerUseCase)
+        } else if (flag == TAKE_VIDEO_FLAG) {
+            capture_button.setBackgroundResource( R.drawable.ic_shutter_video)
+            val cameraUseCase = setupVideoCapture()
+            CameraX.bindToLifecycle(this, preview, cameraUseCase)
+
+            // uncomment below once videocapture API in CameraX is released
+//            CameraX.bindToLifecycle(this, preview, cameraUseCase, analyzerUseCase)
+        }
     }
 
     private fun setupPreview(): Preview {
@@ -196,24 +190,6 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
         return videoCapture
     }
 
-//    private fun startTimer(videoCapture: VideoCapture) {
-//        Log.d(TAG,  "CLOCK" + SystemClock.elapsedRealtime().toString())
-//        timer.base = SystemClock.elapsedRealtime()
-//        timer.start()
-//        timer.setOnChronometerTickListener {
-//
-//            val elapsedMillis = SystemClock.elapsedRealtime() - timer.base
-//            Log.d(TAG,  "Elapsed milliseconds: " + elapsedMillis)
-//
-//            if(it.text.toString() == "00:05") {
-//                timer.stop()
-//                mSound.play(MediaActionSound.STOP_VIDEO_RECORDING)
-//                videoCapture.stopRecording()
-//                Log.i(TAG, "Recording stopped")
-//            }
-//        }
-//    }
-
     private fun setupImageCapture(): ImageCapture {
 
         // Create configuration object for the image capture use case
@@ -256,22 +232,6 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
             }
         }
         return imageCapture
-    }
-
-    private val imageCaptureListener = object : ImageCapture.OnImageCapturedListener() {
-        override fun onCaptureSuccess(image: ImageProxy?, rotationDegrees: Int) {
-            super.onCaptureSuccess(image, rotationDegrees)
-            Log.d(TAG, rotationDegrees.toString())
-        }
-
-        override fun onError(
-            imageCaptureError: ImageCapture.ImageCaptureError,
-            message: String,
-            cause: Throwable?
-        ) {
-            super.onError(imageCaptureError, message, cause)
-            Log.e(TAG, message)
-        }
     }
 
     private val imageSavedListener = object : ImageCapture.OnImageSavedListener {

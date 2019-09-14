@@ -16,7 +16,7 @@ object RetrofitClientBuilder {
     private val logger = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
 
     // Create a Custom Interceptor to apply Headers application wide
-    val headerInterceptor = object: Interceptor {
+    private val headerInterceptor = object: Interceptor {
         override fun intercept(chain: Interceptor.Chain): Response {
             var request = chain.request()
             request = request.newBuilder()
