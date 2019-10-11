@@ -31,7 +31,6 @@ abstract class ImageUtils {
          */
         private fun decodeExifOrientation(orientation: Int): Matrix {
             val matrix = Matrix()
-
             // Apply transformation corresponding to declared EXIF orientation
             when (orientation) {
                 ExifInterface.ORIENTATION_NORMAL -> Unit

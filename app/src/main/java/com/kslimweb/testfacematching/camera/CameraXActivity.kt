@@ -8,8 +8,6 @@ import android.graphics.drawable.ColorDrawable
 import android.media.MediaActionSound
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
 import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Rational
@@ -22,7 +20,6 @@ import com.kslimweb.testfacematching.MainActivity
 import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_PICTURE_FLAG
 import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_VIDEO_FLAG
 import com.kslimweb.testfacematching.R
-import com.kslimweb.testfacematching.camera.facedetection.FaceDetection
 import com.kslimweb.testfacematching.utils.AutoFitPreviewBuilder
 import com.kslimweb.testfacematching.utils.Timer
 import kotlinx.android.synthetic.main.activity_camera_x.*
@@ -33,7 +30,8 @@ import java.util.*
 
 class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
-    private var lensFacing = CameraX.LensFacing.FRONT
+    private var videoLensFacing = CameraX.LensFacing.FRONT
+    private var imageLensFacing = CameraX.LensFacing.BACK
     private var flag: Int? = null
     private val mSound = MediaActionSound()
 
@@ -98,22 +96,22 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
         val preview = setupPreview()
 
         // Setup image analysis pipeline that computes average pixel luminance in real time
-        val analyzerConfig = ImageAnalysisConfig.Builder().apply {
-            setLensFacing(lensFacing)
-            // Use a worker thread for image analysis to prevent preview glitches
-            val analyzerThread = HandlerThread(
-                "FaceDetection").apply { start() }
-            setCallbackHandler(Handler(analyzerThread.looper))
-            // In our analysis, we care more about the latest image than analyzing *every* image
-            setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
-            // Set initial target rotation, we will have to call this again if rotation changes
-            // during the lifecycle of this use case
-            setTargetRotation(view_finder.display.rotation)
-        }.build()
+//        val analyzerConfig = ImageAnalysisConfig.Builder().apply {
+//            setLensFacing(imageLensFacing)
+//            // Use a worker thread for image analysis to prevent preview glitches
+//            val analyzerThread = HandlerThread(
+//                "FaceDetection").apply { start() }
+//            setCallbackHandler(Handler(analyzerThread.looper))
+//            // In our analysis, we care more about the latest image than analyzing *every* image
+//            setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
+//            // Set initial target rotation, we will have to call this again if rotation changes
+//            // during the lifecycle of this use case
+//            setTargetRotation(view_finder.display.rotation)
+//        }.build()
 
-        val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
-            analyzer = FaceDetection(this@CameraXActivity)
-        }
+//        val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
+//            analyzer = FaceDetection(this@CameraXActivity)
+//        }
 
         // Bind use cases to lifecycle
         // If Android Studio complains about "this" being not a LifecycleOwner
@@ -123,10 +121,11 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
             capture_button.setBackgroundResource(R.drawable.ic_shutter_image)
             timer.visibility = View.GONE
             val cameraUseCase = setupImageCapture()
-            CameraX.bindToLifecycle(this, preview, cameraUseCase, analyzerUseCase)
+            CameraX.bindToLifecycle(this, preview, cameraUseCase)
         } else if (flag == TAKE_VIDEO_FLAG) {
             capture_button.setBackgroundResource( R.drawable.ic_shutter_video)
             val cameraUseCase = setupVideoCapture()
+            image_rectangle.visibility = View.GONE
             CameraX.bindToLifecycle(this, preview, cameraUseCase)
 
             // uncomment below once videocapture API in CameraX is released
@@ -135,6 +134,13 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
     }
 
     private fun setupPreview(): Preview {
+
+        val lensFacing = if (flag == TAKE_PICTURE_FLAG) {
+            CameraX.LensFacing.BACK
+        } else {
+            CameraX.LensFacing.FRONT
+        }
+
         // Get screen metrics used to setup camera for full screen resolution
         val metrics = DisplayMetrics().also { view_finder.display.getRealMetrics(it) }
         val screenAspectRatio = Rational(metrics.widthPixels, metrics.heightPixels)
@@ -160,9 +166,9 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
         val rotation = view_finder.display.rotation
         val videoCaptureConfig = VideoCaptureConfig.Builder()
             .apply {
-                setLensFacing(lensFacing)
+                setLensFacing(videoLensFacing)
                 setTargetRotation(rotation)
-        }.build()
+            }.build()
 
         val videoCapture = VideoCapture(videoCaptureConfig)
 
@@ -199,7 +205,7 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
                 // select a capture mode which will infer the appropriate
                 // resolution based on aspect ration and requested mode
                 setCaptureMode(ImageCapture.CaptureMode.MAX_QUALITY)
-                setLensFacing(lensFacing)
+                setLensFacing(imageLensFacing)
                 setTargetRotation(view_finder.display.rotation)
                 // We request aspect ratio but no resolution to let CameraX optimize our use cases
 //                setTargetAspectRatio(screenAspectRatio)
@@ -214,7 +220,7 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
             // Setup image capture metadata
             val metadata = ImageCapture.Metadata().apply {
                 // Mirror image when using the front camera
-                isReversedHorizontal = lensFacing == CameraX.LensFacing.FRONT
+                isReversedHorizontal = imageLensFacing == CameraX.LensFacing.FRONT
             }
 
             imageCapture.takePicture(photoFile, imageSavedListener, metadata)
