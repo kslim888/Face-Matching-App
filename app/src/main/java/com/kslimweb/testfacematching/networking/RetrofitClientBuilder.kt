@@ -9,6 +9,8 @@ import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
 object RetrofitClientBuilder {
+    // To debug http://192.168.0.161:8080
+    // and add android:usesCleartextTraffic="true" in manifest application tag
     private const val BASE_URL = "https://cardzone-face-matching.herokuapp.com"
     private var retrofit: Retrofit? = null
 

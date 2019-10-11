@@ -26,7 +26,8 @@
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
 
-        <activity android:name=".camera.CameraXActivity" >
+        <activity android:name=".camera.CameraXActivity"
+            android:parentActivityName=".MainActivity">
             <!-- Register as a system camera app -->
             <intent-filter>
                 <action android:name="android.media.action.IMAGE_CAPTURE" />
@@ -36,7 +37,6 @@
             </intent-filter>
             <!-- Declare notch support -->
             <meta-data android:name="android.notch_support" android:value="true"/>
-
         </activity>
 
         <meta-data
