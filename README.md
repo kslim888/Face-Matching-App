@@ -4,4 +4,4 @@
 
 This app leverage the Flask API deployed on https://cardzone-face-matching.herokuapp.com with endpoint /api/upload. Used Retrofit to call it
 
-The repo for the API is in [face-matching](https://github.com/limkhashing/face-matching)
+The repo for the API is in [Face-Matching](https://github.com/limkhashing/Face-Matching)
