@@ -35,7 +35,8 @@ class MainActivity : AppCompatActivity() {
     private val TAG = MainActivity::class.java.simpleName
     private var imageFile: File? = null
     private var videoFile: File? = null
-    private var threshold: String? = null
+    private lateinit var threshold: String
+    private lateinit var tolerance: String
 
     companion object {
         const val TAKE_PICTURE_FLAG = 1
@@ -66,7 +67,7 @@ class MainActivity : AppCompatActivity() {
             videoFile = cameraVideoFile
         }
 
-        threshold_range_bar.setRangePinsByValue(0.6F, 0.6F)
+        threshold_range_bar.setRangePinsByValue(0.8F, 0.8F)
         threshold_range_bar.setOnRangeBarChangeListener(object: RangeBar.OnRangeBarChangeListener {
             override fun onTouchEnded(rangeBar: RangeBar?) { }
             override fun onRangeChangeListener(
@@ -77,7 +78,23 @@ class MainActivity : AppCompatActivity() {
                 rightPinValue: String?
             ) {
                 Log.d(TAG, "Current Threshold Value: $rightPinValue")
-                threshold = rightPinValue
+                threshold = rightPinValue!!
+            }
+            override fun onTouchStarted(rangeBar: RangeBar?) { }
+        })
+
+        tolerance_range_bar.setRangePinsByValue(0.5F, 0.5F)
+        tolerance_range_bar.setOnRangeBarChangeListener(object: RangeBar.OnRangeBarChangeListener {
+            override fun onTouchEnded(rangeBar: RangeBar?) { }
+            override fun onRangeChangeListener(
+                rangeBar: RangeBar?,
+                leftPinIndex: Int,
+                rightPinIndex: Int,
+                leftPinValue: String?,
+                rightPinValue: String?
+            ) {
+                Log.d(TAG, "Current Tolerance Value: $rightPinValue")
+                tolerance = rightPinValue!!
             }
             override fun onTouchStarted(rangeBar: RangeBar?) { }
         })
@@ -106,11 +123,12 @@ class MainActivity : AppCompatActivity() {
             val imagePart = MultipartBody.Part.createFormData(IMAGE_FORM_KEY, imageFile!!.name, imageRequest)
             val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
             val videoPart = MultipartBody.Part.createFormData(VIDEO_FORM_KEY, videoFile!!.name, videoRequest)
-            val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold!!)
+            val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold)
+            val toleranceFormData = RequestBody.create(MediaType.parse("multipart/form-data"), tolerance)
 
             // perform http request
             val retrofit = RetrofitClientBuilder.retrofitInstance?.create(FaceMatchingService::class.java)
-            retrofit?.postData(imagePart, videoPart, thresholdFormData)?.enqueue(object:
+            retrofit?.postData(imagePart, videoPart, toleranceFormData, thresholdFormData)?.enqueue(object:
                 Callback<ResponseData> {
                 override fun onFailure(call: Call<ResponseData>, t: Throwable) {
                     Log.d(TAG, "Failed: " + t.message)

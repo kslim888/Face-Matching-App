@@ -121,6 +121,7 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
             capture_button.setBackgroundResource(R.drawable.ic_shutter_image)
             timer.visibility = View.GONE
             val cameraUseCase = setupImageCapture()
+            image_circle.visibility = View.GONE
             CameraX.bindToLifecycle(this, preview, cameraUseCase)
         } else if (flag == TAKE_VIDEO_FLAG) {
             capture_button.setBackgroundResource( R.drawable.ic_shutter_video)
