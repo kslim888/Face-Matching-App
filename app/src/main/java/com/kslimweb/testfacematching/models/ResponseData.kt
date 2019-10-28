@@ -13,8 +13,5 @@ data class ResponseData(
     val faceFoundInVideo: Boolean,
 
     @SerializedName("is_match")
-    val isMatch: Boolean,
-
-    @SerializedName("status_code")
-    val statusCode: Int
+    val isMatch: Boolean
 )
