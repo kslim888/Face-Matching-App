@@ -52,7 +52,7 @@ dependencies {
     implementation 'com.appyvet:materialrangebar:1.4.6'
 
     // for camera api
-    def camerax_version = "1.0.0-alpha05"
+    def camerax_version = "1.0.0-alpha06"
     implementation "androidx.camera:camera-core:${camerax_version}"
     implementation "androidx.camera:camera-camera2:${camerax_version}"
 }
