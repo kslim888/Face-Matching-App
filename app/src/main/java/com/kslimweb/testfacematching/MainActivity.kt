@@ -10,23 +10,24 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.afollestad.materialdialogs.MaterialDialog
 import com.appyvet.materialrangebar.RangeBar
-import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.kslimweb.testfacematching.camera.CameraXActivity
 import com.kslimweb.testfacematching.camera.CameraXActivity.Companion.cameraImageFile
 import com.kslimweb.testfacematching.camera.CameraXActivity.Companion.cameraVideoFile
-import com.kslimweb.testfacematching.models.ResponseData
-import com.kslimweb.testfacematching.networking.FaceMatchingService
-import com.kslimweb.testfacematching.networking.RetrofitClientBuilder
+import com.kslimweb.testfacematching.api.FaceMatchingRetrofitBuilder
+import com.kslimweb.testfacematching.models.FaceMatchingData
+import com.kslimweb.testfacematching.models.RequestData
 import com.kslimweb.testfacematching.permissions.PermissionsUtil
 import com.kslimweb.testfacematching.utils.ImageUtils
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.io.File
 
 
@@ -110,46 +111,59 @@ class MainActivity : AppCompatActivity() {
         }
 
         submit.setOnClickListener{
-            performFaceMatchingRequest()
+            whenAllNotNull(imageFile, videoFile) {
+
+                layout_progress.visibility = View.VISIBLE
+
+                // setting up forms data
+                val (imagePart,
+                    videoPart,
+                    thresholdFormData,
+                    toleranceFormData) = setUpFormData()
+
+                CoroutineScope(IO).launch {
+                    performFaceMatchingRequest(imagePart, videoPart, thresholdFormData, toleranceFormData)
+                }
+            }
         }
     }
 
-    private fun performFaceMatchingRequest() {
-        whenAllNotNull(imageFile, videoFile) {
-            layout_progress.visibility = View.VISIBLE
+    private fun setUpFormData(): RequestData {
+        val imageRequest = RequestBody.create(MediaType.parse("multipart/form-data"), imageFile!!)
+        val imagePart = MultipartBody.Part.createFormData(IMAGE_FORM_KEY, imageFile!!.name, imageRequest)
+        val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
+        val videoPart = MultipartBody.Part.createFormData(VIDEO_FORM_KEY, videoFile!!.name, videoRequest)
+        val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold)
+        val toleranceFormData = RequestBody.create(MediaType.parse("multipart/form-data"), tolerance)
 
-            // setting up forms data
-            val imageRequest = RequestBody.create(MediaType.parse("multipart/form-data"), imageFile!!)
-            val imagePart = MultipartBody.Part.createFormData(IMAGE_FORM_KEY, imageFile!!.name, imageRequest)
-            val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
-            val videoPart = MultipartBody.Part.createFormData(VIDEO_FORM_KEY, videoFile!!.name, videoRequest)
-            val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold)
-            val toleranceFormData = RequestBody.create(MediaType.parse("multipart/form-data"), tolerance)
+        return RequestData(imagePart, videoPart, thresholdFormData, toleranceFormData)
+    }
 
-            // perform http request
-            val retrofit = RetrofitClientBuilder.retrofitInstance?.create(FaceMatchingService::class.java)
-            retrofit?.postData(imagePart, videoPart, toleranceFormData, thresholdFormData)?.enqueue(object:
-                Callback<ResponseData> {
-                override fun onFailure(call: Call<ResponseData>, t: Throwable) {
-                    Log.d(TAG, "Failed: " + t.message)
-                    layout_progress.visibility = View.GONE
-                }
+    private suspend fun performFaceMatchingRequest(
+        imagePart: MultipartBody.Part,
+        videoPart: MultipartBody.Part,
+        thresholdFormData: RequestBody,
+        toleranceFormData: RequestBody
+    ) {
+        val faceMatchingData = FaceMatchingRetrofitBuilder
+            .apiService
+            .postData(imagePart, videoPart, thresholdFormData, toleranceFormData)
 
-                override fun onResponse(call: Call<ResponseData>, response: Response<ResponseData>) {
-                    layout_progress.visibility = View.GONE
-                    val result = response.body()
-                    Log.d(TAG, "Response: " + Gson().toJson(result))
-                    result_text_view.text = GsonBuilder().setPrettyPrinting().create().toJson(result)
+        setUI(faceMatchingData)
+    }
 
-                    showResultDialog(result!!.isMatch)
-                }
-            })!!
+    private suspend fun setUI(faceMatchingData: FaceMatchingData) {
+        withContext(Main) {
+            result_text_view.text = GsonBuilder().setPrettyPrinting().create().toJson(faceMatchingData)
+            showResultDialog(faceMatchingData.isMatch)
+            layout_progress.visibility = View.GONE
+            onEnterAnimationComplete()
         }
     }
 
-    private fun showResultDialog(match: Boolean) {
+    private fun showResultDialog(isMatch: Boolean) {
         MaterialDialog(this).show {
-            if (match) {
+            if (isMatch) {
                 title(text = "Your face is matched")
                 icon(R.drawable.ic_check_green_24dp)
             } else {

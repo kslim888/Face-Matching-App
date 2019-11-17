@@ -1,32 +1,28 @@
-package com.kslimweb.testfacematching.networking
+package com.kslimweb.testfacematching.api
 
 import okhttp3.Interceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.OkHttpClient
-import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
-object RetrofitClientBuilder {
+object FaceMatchingRetrofitBuilder {
     // To debug http://192.168.0.161:8080
     // and add android:usesCleartextTraffic="true" in manifest application tag
     private const val BASE_URL = "https://matching-face.herokuapp.com"
-    private var retrofit: Retrofit? = null
 
     // to log http request
     private val logger = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
 
     // Create a Custom Interceptor to apply Headers application wide
-    private val headerInterceptor = object: Interceptor {
-        override fun intercept(chain: Interceptor.Chain): Response {
-            var request = chain.request()
-            request = request.newBuilder()
-                .addHeader("connection", "keep-alive")
-                .build()
-            val response = chain.proceed(request)
-            return response
-        }
+    private val headerInterceptor = Interceptor { chain ->
+        var request = chain.request()
+        request = request.newBuilder()
+            .addHeader("connection", "keep-alive")
+            .build()
+        val response = chain.proceed(request)
+        response
     }
 
     // add timeout 120 seconds for API call
@@ -40,16 +36,14 @@ object RetrofitClientBuilder {
         .callTimeout(120, TimeUnit.SECONDS)
         .build()
 
-    val retrofitInstance: Retrofit?
-    get() {
-        if(retrofit == null) {
-            retrofit = Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(okHttpClient)
-                .build()
-        }
-        return retrofit
+    private val retrofitBuilder: Retrofit.Builder by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(okHttpClient)
     }
 
+    val apiService: FaceMatchingAPI by lazy {
+        retrofitBuilder.build().create(FaceMatchingAPI::class.java)
+    }
 }

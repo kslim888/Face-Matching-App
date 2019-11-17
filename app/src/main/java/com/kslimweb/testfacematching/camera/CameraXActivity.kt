@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Rational
-import android.view.MotionEvent
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -173,27 +172,21 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
         val videoCapture = VideoCapture(videoCaptureConfig)
 
-        capture_button.setOnTouchListener { _, event ->
+        capture_button.setOnClickListener {
 
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                mSound.play(MediaActionSound.START_VIDEO_RECORDING)
-                val videoFile = setupFile(flag!!)
+            capture_button.setBackgroundResource(R.drawable.ic_shutter_recording)
 
-                // delay 1 second and start record
-                capture_button.postDelayed({
+            mSound.play(MediaActionSound.START_VIDEO_RECORDING)
+            val videoFile = setupFile(flag!!)
 
-                    videoCapture.startRecording(videoFile, videoSavedListener)
-                    val timer = Timer(6000, 1000, this, videoCapture)
-                    timer.start()
-                }, 500)
-
-            } else if (event.action == MotionEvent.ACTION_UP) {
-                mSound.play(MediaActionSound.STOP_VIDEO_RECORDING)
-                videoCapture.stopRecording()
-                Log.i(TAG, "Recording stopped")
-            }
-            false
+            // delay 500 milliseconds and start record
+            capture_button.postDelayed( {
+                videoCapture.startRecording(videoFile, videoSavedListener)
+                val timer = Timer(6000, 1000, this, videoCapture)
+                timer.start()
+            }, 500)
         }
+
         return videoCapture
     }
 

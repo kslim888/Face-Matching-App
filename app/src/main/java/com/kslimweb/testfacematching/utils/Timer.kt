@@ -19,6 +19,7 @@ open class Timer(
 
     @SuppressLint("RestrictedApi")
     override fun onFinish() {
+        activity.capture_button.setBackgroundResource(R.drawable.ic_shutter_video)
         MediaActionSound().play(MediaActionSound.STOP_VIDEO_RECORDING)
         videoCapture.stopRecording()
     }

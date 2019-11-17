@@ -2,7 +2,7 @@ package com.kslimweb.testfacematching.models
 
 import com.google.gson.annotations.SerializedName
 
-data class ResponseData(
+data class FaceMatchingData(
     @SerializedName("confidence")
     val confidence: Double,
 

@@ -88,21 +88,21 @@ abstract class ImageUtils {
         /**
          * This function cuts out a circular thumbnail from the provided bitmap. This is done by
          * first scaling the image down to a square with width of [diameter], and then marking all
-         * pixels outside of the inner circle as transparent.
+         * pixels outside of the inner ic_shutter_video as transparent.
          *
          * @param bitmap - The [Bitmap] to be taken a thumbnail of
-         * @param diameter - Size in pixels for the diameter of the resulting circle
+         * @param diameter - Size in pixels for the diameter of the resulting ic_shutter_video
          */
         fun cropCircularThumbnail(bitmap: Bitmap, diameter: Int = 128): Bitmap {
             // Extract a much smaller bitmap to serve as thumbnail
             val thumbnail = ThumbnailUtils.extractThumbnail(bitmap, diameter, diameter)
 
-            // Create an additional bitmap of same size as thumbnail to carve a circle out of
+            // Create an additional bitmap of same size as thumbnail to carve a ic_shutter_video out of
             val circular = Bitmap.createBitmap(
                 diameter, diameter, Bitmap.Config.ARGB_8888
             )
 
-            // Paint will be used as a mask to cut out the circle
+            // Paint will be used as a mask to cut out the ic_shutter_video
             val paint = Paint().apply {
                 color = Color.BLACK
             }
