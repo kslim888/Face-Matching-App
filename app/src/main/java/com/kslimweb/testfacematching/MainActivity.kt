@@ -11,12 +11,12 @@ import androidx.appcompat.app.AppCompatActivity
 import com.afollestad.materialdialogs.MaterialDialog
 import com.appyvet.materialrangebar.RangeBar
 import com.google.gson.GsonBuilder
+import com.kslimweb.testfacematching.models.RequestFiles.Companion.cameraImageFile
+import com.kslimweb.testfacematching.models.RequestFiles.Companion.cameraVideoFile
 import com.kslimweb.testfacematching.camera.CameraXActivity
-import com.kslimweb.testfacematching.camera.CameraXActivity.Companion.cameraImageFile
-import com.kslimweb.testfacematching.camera.CameraXActivity.Companion.cameraVideoFile
 import com.kslimweb.testfacematching.api.FaceMatchingRetrofitBuilder
 import com.kslimweb.testfacematching.models.FaceMatchingData
-import com.kslimweb.testfacematching.models.RequestData
+import com.kslimweb.testfacematching.models.FormRequestData
 import com.kslimweb.testfacematching.permissions.PermissionsUtil
 import com.kslimweb.testfacematching.utils.ImageUtils
 import kotlinx.android.synthetic.main.activity_main.*
@@ -51,22 +51,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         PermissionsUtil.setContext(this)
-
-        if (cameraImageFile != null) {
-            val orientedBitmap = ImageUtils.decodeBitmap(cameraImageFile!!)
-            imageView.setImageBitmap(orientedBitmap)
-            imageFile = cameraImageFile
-        }
-
-        if (cameraVideoFile != null) {
-            // start video media
-            val mediaController = MediaController(this)
-            videoView.setVideoURI(Uri.fromFile(cameraVideoFile))
-            videoView.setMediaController(mediaController)
-            videoView.start()
-
-            videoFile = cameraVideoFile
-        }
 
         threshold_range_bar.setRangePinsByValue(0.8F, 0.8F)
         threshold_range_bar.setOnRangeBarChangeListener(object: RangeBar.OnRangeBarChangeListener {
@@ -128,7 +112,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setUpFormData(): RequestData {
+    override fun onResume() {
+        super.onResume()
+
+        cameraImageFile?.let {
+            val orientedBitmap = ImageUtils.decodeBitmap(it)
+            imageView.setImageBitmap(orientedBitmap)
+            imageFile = cameraImageFile
+        }
+
+        cameraVideoFile?.let {
+            // start video media
+            val mediaController = MediaController(this)
+            videoView.setVideoURI(Uri.fromFile(it))
+            videoView.setMediaController(mediaController)
+            videoView.start()
+            videoFile = it
+        }
+    }
+
+    private fun setUpFormData(): FormRequestData {
         val imageRequest = RequestBody.create(MediaType.parse("multipart/form-data"), imageFile!!)
         val imagePart = MultipartBody.Part.createFormData(IMAGE_FORM_KEY, imageFile!!.name, imageRequest)
         val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
@@ -136,7 +139,7 @@ class MainActivity : AppCompatActivity() {
         val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold)
         val toleranceFormData = RequestBody.create(MediaType.parse("multipart/form-data"), tolerance)
 
-        return RequestData(imagePart, videoPart, thresholdFormData, toleranceFormData)
+        return FormRequestData(imagePart, videoPart, thresholdFormData, toleranceFormData)
     }
 
     private suspend fun performFaceMatchingRequest(

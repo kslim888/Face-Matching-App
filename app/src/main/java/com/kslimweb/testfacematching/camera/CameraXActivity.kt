@@ -2,7 +2,6 @@ package com.kslimweb.testfacematching.camera
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.media.MediaActionSound
@@ -15,10 +14,10 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.lifecycle.LifecycleOwner
-import com.kslimweb.testfacematching.MainActivity
 import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_PICTURE_FLAG
 import com.kslimweb.testfacematching.MainActivity.Companion.TAKE_VIDEO_FLAG
 import com.kslimweb.testfacematching.R
+import com.kslimweb.testfacematching.models.RequestFiles
 import com.kslimweb.testfacematching.utils.AutoFitPreviewBuilder
 import com.kslimweb.testfacematching.utils.Timer
 import kotlinx.android.synthetic.main.activity_camera_x.*
@@ -39,9 +38,6 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
         private const val FILENAME = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val PHOTO_EXTENSION = ".jpg"
         private const val VIDEO_EXTENSION = ".mp4"
-
-        var cameraImageFile: File? = null
-        var cameraVideoFile: File? = null
 
         /** Helper function used to create a timestamped file */
         private fun createFile(baseFolder: File, format: String, extension: String) =
@@ -237,9 +233,9 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
     private val imageSavedListener = object : ImageCapture.OnImageSavedListener {
         override fun onImageSaved(file: File) {
             val msg = "Photo capture succeeded: ${file.absolutePath}"
-            cameraImageFile = file
             Log.i(TAG, msg)
-            startActivity(Intent(this@CameraXActivity, MainActivity::class.java))
+            RequestFiles.cameraImageFile = file
+            finish()
         }
 
         override fun onError(
@@ -254,9 +250,9 @@ class CameraXActivity : AppCompatActivity(), LifecycleOwner {
     private val videoSavedListener = object : VideoCapture.OnVideoSavedListener {
         override fun onVideoSaved(file: File) {
             val msg = "Video record succeeded: ${file.absolutePath}"
-            cameraVideoFile = file
             Log.i(TAG, msg)
-            startActivity(Intent(this@CameraXActivity, MainActivity::class.java))
+            RequestFiles.cameraVideoFile = file
+            finish()
         }
 
         override fun onError(
