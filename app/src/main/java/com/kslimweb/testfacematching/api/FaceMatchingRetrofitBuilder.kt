@@ -12,9 +12,6 @@ object FaceMatchingRetrofitBuilder {
     // and add android:usesCleartextTraffic="true" in manifest application tag
     private const val BASE_URL = "https://matching-face.herokuapp.com"
 
-    // to log http request
-    private val logger = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-
     // Create a Custom Interceptor to apply Headers application wide
     private val headerInterceptor = Interceptor { chain ->
         var request = chain.request()
@@ -29,7 +26,6 @@ object FaceMatchingRetrofitBuilder {
     // header keep-connection alive can't solve timeout issues
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(headerInterceptor)
-        .addInterceptor(logger)
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
         .connectTimeout(120, TimeUnit.SECONDS)
