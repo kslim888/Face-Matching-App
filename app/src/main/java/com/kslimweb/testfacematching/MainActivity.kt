@@ -181,7 +181,7 @@ class MainActivity : AppCompatActivity() {
         if (options.all { it != null }) {
             block(options.filterNotNull()) // or do unsafe cast to non null collection
         } else {
-            Toast.makeText(this,"Please take photo and a short ( < 5 seconds) video first", Toast.LENGTH_LONG).show()
+            Toast.makeText(this,"Please take photo and a 5 seconds video first", Toast.LENGTH_LONG).show()
         }
     }
 }
