@@ -13,5 +13,8 @@ data class FaceMatchingData(
     val faceFoundInVideo: Boolean,
 
     @SerializedName("is_match")
-    val isMatch: Boolean
+    val isMatch: Boolean,
+
+    @SerializedName("file_type")
+    val fileType: String
 )
