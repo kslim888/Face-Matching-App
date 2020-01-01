@@ -24,13 +24,14 @@ import kotlinx.android.synthetic.main.activity_camera_x.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.properties.Delegates
 
 
 class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
     private var videoLensFacing = CameraX.LensFacing.FRONT
     private var imageLensFacing = CameraX.LensFacing.BACK
-    private var flag: Int? = null
+    private var flag by Delegates.notNull<Int>()
     private val mSound = MediaActionSound()
 
     companion object {

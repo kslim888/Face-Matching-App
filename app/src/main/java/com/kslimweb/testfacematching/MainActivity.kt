@@ -11,23 +11,23 @@ import androidx.appcompat.app.AppCompatActivity
 import com.afollestad.materialdialogs.MaterialDialog
 import com.appyvet.materialrangebar.RangeBar
 import com.google.gson.GsonBuilder
-import com.kslimweb.testfacematching.models.RequestFiles.Companion.cameraImageFile
-import com.kslimweb.testfacematching.models.RequestFiles.Companion.cameraVideoFile
-import com.kslimweb.testfacematching.camera.CameraXActivity
 import com.kslimweb.testfacematching.api.FaceMatchingRetrofitBuilder
+import com.kslimweb.testfacematching.camera.CameraXActivity
 import com.kslimweb.testfacematching.models.FaceMatchingData
 import com.kslimweb.testfacematching.models.FormRequestData
+import com.kslimweb.testfacematching.models.RequestFiles.Companion.cameraImageFile
+import com.kslimweb.testfacematching.models.RequestFiles.Companion.cameraVideoFile
 import com.kslimweb.testfacematching.permissions.PermissionsUtil
 import com.kslimweb.testfacematching.utils.ImageUtils
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 
@@ -132,12 +132,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setUpFormData(): FormRequestData {
-        val imageRequest = RequestBody.create(MediaType.parse("multipart/form-data"), imageFile!!)
+        val mediaType = "multipart/form-data; charset=utf-8".toMediaType()
+
+        val imageRequest = imageFile!!.asRequestBody(mediaType)
         val imagePart = MultipartBody.Part.createFormData(IMAGE_FORM_KEY, imageFile!!.name, imageRequest)
-        val videoRequest = RequestBody.create(MediaType.parse("multipart/form-data"), videoFile!!)
+        val videoRequest = videoFile!!.asRequestBody(mediaType)
         val videoPart = MultipartBody.Part.createFormData(VIDEO_FORM_KEY, videoFile!!.name, videoRequest)
-        val thresholdFormData = RequestBody.create(MediaType.parse("multipart/form-data"), threshold)
-        val toleranceFormData = RequestBody.create(MediaType.parse("multipart/form-data"), tolerance)
+        val thresholdFormData = threshold.toRequestBody(mediaType)
+        val toleranceFormData = tolerance.toRequestBody(mediaType)
 
         return FormRequestData(imagePart, videoPart, thresholdFormData, toleranceFormData)
     }
@@ -148,11 +150,12 @@ class MainActivity : AppCompatActivity() {
         thresholdFormData: RequestBody,
         toleranceFormData: RequestBody
     ) {
-        val faceMatchingData = FaceMatchingRetrofitBuilder
-            .apiService
-            .postData(imagePart, videoPart, thresholdFormData, toleranceFormData)
-
-        setUI(faceMatchingData)
+        withContext(IO) {
+            val faceMatchingData = async {
+                FaceMatchingRetrofitBuilder.apiService.postData(imagePart, videoPart, thresholdFormData, toleranceFormData)
+            }
+            setUI(faceMatchingData.await())
+        }
     }
 
     private suspend fun setUI(faceMatchingData: FaceMatchingData) {
