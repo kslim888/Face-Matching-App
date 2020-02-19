@@ -14,7 +14,7 @@ interface FaceMatchingAPI {
     suspend fun postData(
         @Part original: MultipartBody.Part,
         @Part unknown: MultipartBody.Part,
-        @Part("tolerance") tolerance: RequestBody,
-        @Part("threshold") threshold: RequestBody
+        @Part("threshold") threshold: RequestBody,
+        @Part("tolerance") tolerance: RequestBody
     ): FaceMatchingData
 }

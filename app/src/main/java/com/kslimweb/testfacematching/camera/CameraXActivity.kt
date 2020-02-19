@@ -26,7 +26,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.properties.Delegates
 
-
+// TODO update camerax version
 class CameraXActivity : AppCompatActivity(), LifecycleOwner {
 
     private var videoLensFacing = CameraX.LensFacing.FRONT
