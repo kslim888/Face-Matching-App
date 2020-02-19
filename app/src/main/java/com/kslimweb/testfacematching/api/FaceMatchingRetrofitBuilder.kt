@@ -1,5 +1,6 @@
 package com.kslimweb.testfacematching.api
 
+import com.kslimweb.testfacematching.utils.VersionUtil
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -9,7 +10,11 @@ import java.util.concurrent.TimeUnit
 object FaceMatchingRetrofitBuilder {
     // To debug http://192.168.0.161:8080
     // and add android:usesCleartextTraffic="true" in manifest application tag
-    private const val BASE_URL = "https://matching-face.herokuapp.com"
+    private val BASE_URL = if (!VersionUtil.isReleaseMode) {
+        "https://matching-face.herokuapp.com"
+    } else {
+        "https://cardzone-face-matching.herokuapp.com"
+    }
 
     // Create a Custom Interceptor to apply Headers application wide
     private val headerInterceptor = Interceptor { chain ->
