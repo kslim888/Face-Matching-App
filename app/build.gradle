@@ -6,6 +6,14 @@ apply plugin: 'kotlin-android-extensions'
 apply plugin: 'com.google.gms.google-services'
 
 android {
+    signingConfigs {
+        release {
+            keyAlias 'face-matching'
+            keyPassword 'android'
+            storeFile file("$rootProject.projectDir/face-matching.jks")
+            storePassword 'android'
+        }
+    }
     compileSdkVersion 29
     defaultConfig {
         applicationId "com.kslimweb.testfacematching"
@@ -21,6 +29,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
