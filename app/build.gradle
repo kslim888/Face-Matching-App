@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId "com.kslimweb.testfacematching"
         minSdkVersion 21
-        targetSdkVersion 27
+        targetSdkVersion 29
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -29,6 +29,11 @@ android {
     }
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_1_8.toString()
+    }
+    applicationVariants.all { variant ->
+        variant.outputs.all { v ->
+            outputFileName = "face-matching-${v.baseName}-${variant.versionName}-${defaultConfig.versionCode}.apk"
+        }
     }
 }
 
