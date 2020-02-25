@@ -1,5 +1,6 @@
 package com.kslimweb.testfacematching.api
 
+import com.facebook.stetho.okhttp3.StethoInterceptor
 import com.kslimweb.testfacematching.utils.VersionUtil
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -30,6 +31,7 @@ object FaceMatchingRetrofitBuilder {
     // header keep-connection alive can't solve timeout issues
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(headerInterceptor)
+        .addNetworkInterceptor(StethoInterceptor())
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
         .connectTimeout(120, TimeUnit.SECONDS)
